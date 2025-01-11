@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Mail } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
-
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRouter } from "next/router"; // <-- Import useRouter
 
 export function Navbar() {
   const pathname = usePathname();
@@ -96,6 +96,11 @@ export function Navbar() {
                         {session.user?.email}
                       </p>
                     </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Link href="/profile" className="w-full">
+                      Profile
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => signOut()}>
                     Log out

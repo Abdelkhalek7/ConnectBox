@@ -1,37 +1,67 @@
-import { addDays, addHours, format, nextSaturday } from "date-fns"
-import { Archive, ArchiveX, Clock, Forward, MoreVertical, Reply, ReplyAll, Trash2 } from 'lucide-react'
+"use client";
+import { addDays, addHours, format, nextSaturday } from "date-fns";
+import {
+  Archive,
+  ArchiveX,
+  Clock,
+  Forward,
+  MoreVertical,
+  Reply,
+  ReplyAll,
+  Trash2,
+} from "lucide-react";
 
-import { Mail } from "@/types"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { Mail } from "@/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dropdown-menu";
+// import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+// import { Switch } from "@/components/ui/switch";
+// import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
+import { useSession } from "next-auth/react";
+// import { authOptions } from "@/lib/auth";
+// import { redirect } from "next/navigation";
+import markEmailAsRead from "@/actions/markEmailAsRead";
+import { useEffect } from "react";
 
 interface MailDisplayProps {
-  mail: Mail | null
+  mail: Mail | null;
 }
 
 export function MailDisplay({ mail }: MailDisplayProps) {
-  const today = new Date()
+  const today = new Date();
+  const { data: session, status } = useSession();
+  useEffect(() => {
+    if (session && status === "authenticated" && session.accessToken) {
+      if (mail?.labels?.includes("UNREAD")) {
+        markEmailAsRead(mail.id, session.accessToken);
+      }
+    }
+  }, [session, status, mail]);
+
+  //   if (!session || !session.accessToken) {
+  //     redirect("/login");
+  //   }
+  if (mail?.read === false) {
+    // await markEmailAsRead(mail.id, session.accessToken);
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -199,11 +229,26 @@ export function MailDisplay({ mail }: MailDisplayProps) {
             )}
           </div>
           <Separator />
-          <div className="flex-1 whitespace-pre-wrap p-4 text-sm">
-            {mail.text}
-          </div>
-          <Separator className="mt-auto" />
-          <div className="p-4">
+          {/* <div className="flex-1 overflow-auto whitespace-pre-wrap p-4 text-sm">
+            <div
+              dangerouslySetInnerHTML={{ __html: mail.text || "" }}
+              style={{
+                backgroundColor: "#f9f9f9",
+                padding: "10px",
+                borderRadius: "5px",
+                maxHeight: "400px", // Adjust as needed for your layout
+                overflowY: "auto",
+              }}
+            />
+          </div> */}
+          <iframe
+            srcDoc={mail.text || ""}
+            className="w-full h-full border border-gray-300 rounded-md"
+            sandbox="allow-same-origin"
+            style={{ backgroundColor: "white" }}
+          ></iframe>
+          {/* <Separator className="mt-auto" /> */}
+          {/* <div className="p-4">
             <form>
               <div className="grid gap-4">
                 <Textarea
@@ -224,7 +269,7 @@ export function MailDisplay({ mail }: MailDisplayProps) {
                 </div>
               </div>
             </form>
-          </div>
+          </div> */}
         </div>
       ) : (
         <div className="p-8 text-center text-muted-foreground">
@@ -232,6 +277,5 @@ export function MailDisplay({ mail }: MailDisplayProps) {
         </div>
       )}
     </div>
-  )
+  );
 }
-

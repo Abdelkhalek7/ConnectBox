@@ -15,7 +15,6 @@ export const metadata: Metadata = {
   title: "Mail App",
   description: "A modern mail application built with Next.js and shadcn/ui",
 };
-
 export default async function RootLayout({
   children,
 }: {
@@ -25,7 +24,7 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans antialiased",
+          "!min-h-screen  bg-background font-sans antialiased",
           inter.className
         )}
       >
@@ -36,9 +35,11 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <Navbar />
-            <main>{children}</main>
-            <Toaster />
+            <div className="flex flex-col !min-h-screen !max-h-screen ">
+              <Navbar />
+              <main className=" !overflow-auto">{children}</main>
+              <Toaster />
+            </div>
           </ThemeProvider>
         </Provider>
       </body>
