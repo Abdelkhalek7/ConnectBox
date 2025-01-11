@@ -1,10 +1,11 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import { MongooseAdapter } from "@/lib/mongooseAdapter";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import refreshAccessToken from "./refreshAccessToken";
+import db from "./db";
 
 export const authOptions: NextAuthOptions = {
-  adapter: MongooseAdapter(),
+  adapter: PrismaAdapter(db),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -14,44 +15,65 @@ export const authOptions: NextAuthOptions = {
           prompt: "consent",
           access_type: "offline",
           scope:
-            "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send  https://www.googleapis.com/auth/gmail.modify",
         },
       },
     }),
   ],
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
-  },
   pages: {
     signIn: "/login",
   },
+  session: {
+    strategy: "database",
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
+  },
   callbacks: {
-    async jwt({ token, account, user }) {
-      if (account) {
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.expiresAt = account.expires_at;
-        token.providerAccountId = account.providerAccountId;
+    async session({ session, user }) {
+      const account = await db.account.findFirst({
+        where: {
+          userId: user.id,
+        },
+        select: {
+          id: true,
+          providerAccountId: true,
+          access_token: true,
+          refresh_token: true,
+          expires_at: true,
+        },
+      });
+
+      if (!account) {
+        console.error("Account not found");
+        return session;
       }
 
-      if (user) {
-        token.userId = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.userId as string;
+        session.user.id = user.id as string;
       }
-      session.accessToken = token.accessToken as string;
+      if (!session.accessToken) {
+        session.accessToken = account.access_token as string;
 
-      // Check if the access token has expired
-      const expiresAt = token.expiresAt as number;
-      if (expiresAt * 1000 < Date.now()) {
+        session.expires_at = account.expires_at ?? 0;
+      }
+
+      // Ensure expires_at is a valid number before comparing
+      const expiresAt = session.expires_at as unknown as number;
+      console.log("old access token:", session.accessToken);
+      if (expiresAt < Date.now()) {
         console.log("Access token has expired, refreshing...");
-        await refreshAccessToken(token, session);
+        // Refresh the access token
+        session.accessToken = await refreshAccessToken(session, account);
+
+        if (!session.accessToken) {
+          console.error("Failed to refresh access token");
+          // Optionally, you can clear the session or handle the error here
+          return session; // session may not be valid at this point
+        }
+
+        // After refreshing the token, make sure the session expiration is updated correctly
+        session.expires = (Date.now() + 3600 * 1000).toString(); // Set expires to 1 hour from now
+        console.log("Refreshed access token:", session.accessToken);
       }
 
       return session;

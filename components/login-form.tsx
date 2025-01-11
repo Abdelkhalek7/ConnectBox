@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { signIn, useSession } from "next-auth/react"
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { signIn, useSession } from "next-auth/react";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Icons } from "@/components/Icons"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Icons } from "@/components/Icons";
 import {
   Form,
   FormControl,
@@ -19,8 +19,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { useToast } from "@/components/ui/use-toast"
+} from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -29,15 +29,15 @@ const formSchema = z.object({
   password: z.string().min(8, {
     message: "Password must be at least 8 characters long.",
   }),
-})
+});
 
 interface LoginFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function LoginForm({ className, ...props }: LoginFormProps) {
-  const router = useRouter()
-  const { data: session } = useSession()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = React.useState<boolean>(false)
+  const router = useRouter();
+  const { data: session } = useSession();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,44 +45,44 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
       email: "",
       password: "",
     },
-  })
+  });
 
   React.useEffect(() => {
     if (session) {
-      router.push("/")
+      router.push("/");
     }
-  }, [session, router])
+  }, [session, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true)
+    setIsLoading(true);
 
     const result = await signIn("credentials", {
       redirect: false,
       email: values.email,
       password: values.password,
-    })
+    });
 
-    setIsLoading(false)
+    setIsLoading(false);
 
     if (result?.error) {
       toast({
         title: "Error",
         description: result.error,
         variant: "destructive",
-      })
+      });
     } else {
       toast({
         title: "Login Successful",
         description: "Welcome back to Mail App!",
-      })
-      router.push("/")
+      });
+      router.push("/");
     }
   }
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true)
-    await signIn("google", { callbackUrl: "/" })
-  }
+    setIsLoading(true);
+    await signIn("google", { callbackUrl: "/" });
+  };
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
@@ -108,7 +108,11 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
               <FormItem>
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="Enter your password" {...field} />
+                  <Input
+                    type="password"
+                    placeholder="Enter your password"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -132,7 +136,12 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
           </span>
         </div>
       </div>
-      <Button variant="outline" type="button" disabled={isLoading} onClick={handleGoogleSignIn}>
+      <Button
+        variant="outline"
+        type="button"
+        disabled={isLoading}
+        onClick={handleGoogleSignIn}
+      >
         {isLoading ? (
           <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
         ) : (
@@ -141,6 +150,5 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
         Google
       </Button>
     </div>
-  )
+  );
 }
-

@@ -10,6 +10,7 @@ export interface Mail {
   date: string;
   read: boolean;
   labels: string[];
+  snippet: string;
 }
 
 // declare global {
