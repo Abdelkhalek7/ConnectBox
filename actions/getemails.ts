@@ -15,7 +15,7 @@ interface MessagePayload {
   headers?: { name: string; value: string }[];
 }
 
-interface MessageDto {
+export interface MessageDto {
   id: string;
   payload: MessagePayload | null;
   snippet?: string;
@@ -33,7 +33,6 @@ async function decodeBase64(base64String: string): Promise<string> {
 }
 
 async function getMessages(access_token: string): Promise<MessageDto[]> {
-  console.log("🚀 ~ getMessages ~ access_token:", access_token);
   try {
     // Initialize the OAuth2 client with the access token
     const oauth2Client = new google.auth.OAuth2();

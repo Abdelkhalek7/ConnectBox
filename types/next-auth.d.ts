@@ -4,7 +4,7 @@ import NextAuth from "next-auth";
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
-    expires_at:number;
+    expires_at: number;
     error?: string;
     user: {
       id: string;

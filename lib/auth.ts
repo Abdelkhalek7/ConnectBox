@@ -59,8 +59,8 @@ export const authOptions: NextAuthOptions = {
 
       // Ensure expires_at is a valid number before comparing
       const expiresAt = session.expires_at as unknown as number;
-      console.log("old access token:", session.accessToken);
-      if (expiresAt < Date.now()) {
+
+      if (expiresAt < Math.floor(Date.now() / 1000)) {
         console.log("Access token has expired, refreshing...");
         // Refresh the access token
         session.accessToken = await refreshAccessToken(session, account);

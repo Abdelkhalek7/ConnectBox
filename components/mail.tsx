@@ -1,22 +1,9 @@
 "use client";
 
 import * as React from "react";
-import {
-  AlertCircle,
-  Archive,
-  ArchiveX,
-  File,
-  Inbox,
-  MessagesSquare,
-  Moon,
-  //   PenBox,
-  Search,
-  Send,
-  ShoppingCart,
-  Sun,
-  Trash2,
-  Users2,
-} from "lucide-react";
+
+import { Moon, Search, Sun } from "lucide-react";
+
 
 import { AccountSwitcher } from "@/components/account-switcher";
 import { MailDisplay } from "@/components/mail-display";
@@ -37,6 +24,7 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Mail as MailType } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { type LucideIcon } from "lucide-react";
 
 interface MailProps {
   accounts: {
@@ -48,7 +36,20 @@ interface MailProps {
   defaultLayout: number[] | undefined;
   defaultCollapsed?: boolean;
   navCollapsedSize: number;
+  labelsCounts: {
+    group1: Label[];
+    group2: Label[];
+  };
 }
+type Label = {
+  label: string;
+  name: string;
+  icon: LucideIcon | undefined;
+  variant: "default" | "ghost";
+  count: number;
+  unreadcount: boolean;
+};
+
 
 export function Mail({
   accounts,
@@ -56,6 +57,7 @@ export function Mail({
   defaultLayout = [265, 440, 655],
   defaultCollapsed = false,
   navCollapsedSize,
+  labelsCounts,
 }: MailProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed);
   const [mail] = useMail();
@@ -123,83 +125,9 @@ export function Mail({
             </Button>
           </div>
           <Separator />
-          <Nav
-            isCollapsed={isCollapsed}
-            links={[
-              {
-                title: "Inbox",
-                label: "128",
-                icon: Inbox,
-                variant: "default",
-              },
-              {
-                title: "Drafts",
-                label: "9",
-                icon: File,
-                variant: "ghost",
-              },
-              {
-                title: "Sent",
-                label: "",
-                icon: Send,
-                variant: "ghost",
-              },
-              {
-                title: "Junk",
-                label: "23",
-                icon: ArchiveX,
-                variant: "ghost",
-              },
-              {
-                title: "Trash",
-                label: "",
-                icon: Trash2,
-                variant: "ghost",
-              },
-              {
-                title: "Archive",
-                label: "",
-                icon: Archive,
-                variant: "ghost",
-              },
-            ]}
-          />
+          <Nav isCollapsed={isCollapsed} links={labelsCounts.group1} />
           <Separator />
-          <Nav
-            isCollapsed={isCollapsed}
-            links={[
-              {
-                title: "Social",
-                label: "972",
-                icon: Users2,
-                variant: "ghost",
-              },
-              {
-                title: "Updates",
-                label: "342",
-                icon: AlertCircle,
-                variant: "ghost",
-              },
-              {
-                title: "Forums",
-                label: "128",
-                icon: MessagesSquare,
-                variant: "ghost",
-              },
-              {
-                title: "Shopping",
-                label: "8",
-                icon: ShoppingCart,
-                variant: "ghost",
-              },
-              {
-                title: "Promotions",
-                label: "21",
-                icon: Archive,
-                variant: "ghost",
-              },
-            ]}
-          />
+          <Nav isCollapsed={isCollapsed} links={labelsCounts.group2} />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={defaultLayout[1]} minSize={30}>

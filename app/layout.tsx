@@ -8,11 +8,11 @@ import { Navbar } from "@/components/navbar";
 
 import "@/styles/globals.css";
 import Provider from "@/components/session-provider";
+import Providers from "@/components/query-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Mail App",
   description: "A modern mail application built with Next.js and shadcn/ui",
 };
 export default async function RootLayout({
@@ -24,8 +24,8 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          "!min-h-screen  bg-background font-sans antialiased",
-          inter.className
+          "!min-h-screen  bg-background font-sans antialiased max-w-[100vw] overflow-hidden",
+          inter.className,
         )}
       >
         <Provider>
@@ -37,7 +37,9 @@ export default async function RootLayout({
           >
             <div className="flex flex-col !min-h-screen !max-h-screen ">
               <Navbar />
-              <main className=" !overflow-auto">{children}</main>
+              <main className=" !overflow-auto">
+                <Providers>{children}</Providers>
+              </main>
               <Toaster />
             </div>
           </ThemeProvider>

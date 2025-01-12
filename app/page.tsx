@@ -1,29 +1,40 @@
-// import { cookies } from "next/headers"
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
+import getMessages from "@/actions/getemails";
+import { getEmailCountByCategory } from "@/actions/getlabels";
 import { Mail } from "@/components/mail";
-import { Mail as MailType } from "@/types";
 import { accounts } from "@/data/mail";
 import { authOptions } from "@/lib/auth";
-import getMessages from "@/actions/getemails";
 import { parseSender } from "@/lib/parseSender";
+import { Mail as MailType } from "@/types";
+import { getServerSession } from "next-auth/next";
+import { redirect } from "next/navigation";
+
 export default async function MailPage() {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.accessToken) {
     redirect("/login");
   }
-  const emails = await getMessages(session.accessToken);
+  const [labelsCounts, emails] = await Promise.all([
+    getEmailCountByCategory(session.accessToken).then((counts) => ({
+      group1: counts.group1.map((label) => ({
+        ...label,
+        unreadcount: label.unreadcount ?? false,
+        variant: label.variant as "default" | "ghost",
+      })),
+      group2: counts.group2.map((label) => ({
+        ...label,
+        unreadcount: label.unreadcount ?? false,
+        variant: label.variant as "default" | "ghost",
+      })),
+    })),
+    getMessages(session.accessToken),
+  ]);
+
   // Your existing code starts here
   const layout = [265, 440, 655]; // Default layout, since we can't use cookies on the server
   const defaultCollapsed = false; // Default value, since we can't use cookies on the server
 
-  //   const layout = cookies().get("react-resizable-panels:layout")
-  //   const collapsed = cookies().get("react-resizable-panels:collapsed")
-
-  //   const defaultLayout = layout ? JSON.parse(layout.value) : undefined
-  //   const defaultCollapsed = collapsed ? JSON.parse(collapsed.value) : undefined
-  const emailsFormated: MailType[] = emails.map((email) => ({
+  const emailsFormatted: MailType[] = emails.map((email) => ({
     id: email.id,
     name: parseSender(email.from!).name,
     email: parseSender(email.from!).email,
@@ -38,10 +49,11 @@ export default async function MailPage() {
     <div className="!overflow-hidden   max-h-screen h-[91.5vh] ">
       <Mail
         accounts={accounts}
-        mails={emailsFormated}
+        mails={emailsFormatted}
         defaultLayout={layout}
         defaultCollapsed={defaultCollapsed}
         navCollapsedSize={4}
+        labelsCounts={labelsCounts}
       />
     </div>
   );
