@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/navbar";
-
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import "@/styles/globals.css";
 import Provider from "@/components/session-provider";
 import Providers from "@/components/query-provider";
@@ -38,7 +38,9 @@ export default async function RootLayout({
             <div className="flex flex-col !min-h-screen !max-h-screen ">
               <Navbar />
               <main className=" !overflow-auto">
-                <Providers>{children}</Providers>
+                <Providers>
+                  {children} <ReactQueryDevtools initialIsOpen={false} />
+                </Providers>
               </main>
               <Toaster />
             </div>

@@ -1,14 +1,14 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 
 import { Moon, Search, Sun } from "lucide-react";
-
 
 import { AccountSwitcher } from "@/components/account-switcher";
 import { MailDisplay } from "@/components/mail-display";
 import { MailList } from "@/components/mail-list";
 import { Nav } from "@/components/nav";
+
 import { useMail } from "@/hooks/use-mail";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -22,9 +22,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Mail as MailType } from "@/types";
+// import { Mail as MailType } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { type LucideIcon } from "lucide-react";
+// import { type LucideIcon } from "lucide-react";
+// import { mails } from "@/data/mail";
+import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
+import { getLabelsAPI } from "@/apis/getlabelsAPI";
+import { getEmailsAPI } from "@/apis/getMailsAPI";
 
 interface MailProps {
   accounts: {
@@ -32,45 +37,61 @@ interface MailProps {
     email: string;
     icon: React.ReactNode;
   }[];
-  mails: MailType[];
+  // mails: MailType[];
   defaultLayout: number[] | undefined;
   defaultCollapsed?: boolean;
   navCollapsedSize: number;
-  labelsCounts: {
-    group1: Label[];
-    group2: Label[];
-  };
+  // labelsCounts: {
+  //   group1: Label[];
+  //   group2: Label[];
+  // };
 }
-type Label = {
-  label: string;
-  name: string;
-  icon: LucideIcon | undefined;
-  variant: "default" | "ghost";
-  count: number;
-  unreadcount: boolean;
-};
-
+// type Label = {
+//   label: string;
+//   name: string;
+//   icon: LucideIcon | undefined;
+//   variant: "default" | "ghost";
+//   count: number;
+//   unreadcount: boolean;
+// };
 
 export function Mail({
   accounts,
-  mails,
   defaultLayout = [265, 440, 655],
   defaultCollapsed = false,
   navCollapsedSize,
-  labelsCounts,
 }: MailProps) {
-  const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed);
+  const { data: session } = useSession();
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const [selectedCategory, setSelectedCategory] = useState("INBOX");
+
   const [mail] = useMail();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
 
+  const { data: labelsCounts } = useQuery({
+    queryKey: ["labelsCounts", session?.user.id],
+    queryFn: () => getLabelsAPI(session!.accessToken!),
+    enabled: !!session?.accessToken,
+    staleTime: 1000 * 60 * 15,
+  });
+
+  const { data: mails } = useQuery({
+    queryKey: ["emails", session?.user.id, selectedCategory],
+    queryFn: () => getEmailsAPI(session!.accessToken!, selectedCategory),
+
+    enabled: !!session?.accessToken,
+    staleTime: 1000 * 60 * 10,
+  });
+  console.log("mails", mails);
+  console.log("labelsCounts", labelsCounts);
   return (
     <TooltipProvider delayDuration={0}>
       <ResizablePanelGroup
         direction="horizontal"
         onLayout={(sizes: number[]) => {
           document.cookie = `react-resizable-panels:layout=${JSON.stringify(
-            sizes
+            sizes,
           )}`;
         }}
         className="h-[90%] max-h-[800px] items-stretch"
@@ -84,18 +105,18 @@ export function Mail({
           onCollapse={() => {
             setIsCollapsed(true);
             document.cookie = `react-resizable-panels:collapsed=${JSON.stringify(
-              true
+              true,
             )}`;
           }}
           onExpand={() => {
             setIsCollapsed(false);
             document.cookie = `react-resizable-panels:collapsed=${JSON.stringify(
-              false
+              false,
             )}`;
           }}
           className={cn(
             isCollapsed &&
-              "min-w-[50px] transition-all duration-300 ease-in-out"
+              "min-w-[50px] transition-all duration-300 ease-in-out",
           )}
         >
           <div
@@ -125,9 +146,17 @@ export function Mail({
             </Button>
           </div>
           <Separator />
-          <Nav isCollapsed={isCollapsed} links={labelsCounts.group1} />
+          <Nav
+            isCollapsed={isCollapsed}
+            links={labelsCounts?.group1 || []}
+            setCategory={setSelectedCategory}
+          />
           <Separator />
-          <Nav isCollapsed={isCollapsed} links={labelsCounts.group2} />
+          <Nav
+            isCollapsed={isCollapsed}
+            links={labelsCounts?.group2 || []}
+            setCategory={setSelectedCategory}
+          />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={defaultLayout[1]} minSize={30}>
@@ -159,17 +188,26 @@ export function Mail({
               </form>
             </div>
             <TabsContent value="all" className="m-0">
-              <MailList items={mails} />
+              <MailList items={mails || []} />
             </TabsContent>
             <TabsContent value="unread" className="m-0">
-              <MailList items={mails.filter((item) => !item.read)} />
+              {/*eslint-disable-next-line @typescript-eslint/no-explicit-any*/}
+              <MailList
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                items={(mails || []).filter((item: any) => !item.read)}
+              />
             </TabsContent>
           </Tabs>
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={defaultLayout[2]}>
           <MailDisplay
-            mail={mails.find((item) => item.id === mail.selected) || null}
+            selectedCategory={selectedCategory}
+            mail={
+              (mails || []).find(
+                (item: { id: string | null }) => item.id === mail.selected,
+              ) || null
+            }
           />
         </ResizablePanel>
       </ResizablePanelGroup>
