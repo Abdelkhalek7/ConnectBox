@@ -38,30 +38,50 @@ import {
 import { useSession } from "next-auth/react";
 // import { authOptions } from "@/lib/auth";
 // import { redirect } from "next/navigation";
-import markEmailAsRead from "@/actions/markEmailAsRead";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useMarkEmailAsRead } from "@/hooks/useMarkEmailAsRead";
 
 interface MailDisplayProps {
   mail: Mail | null;
+  selectedCategory: string;
 }
 
-export function MailDisplay({ mail }: MailDisplayProps) {
+export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
   const today = new Date();
   const { data: session, status } = useSession();
-  useEffect(() => {
-    if (session && status === "authenticated" && session.accessToken) {
-      if (mail?.labels?.includes("UNREAD")) {
-        markEmailAsRead(mail.id, session.accessToken);
-      }
-    }
-  }, [session, status, mail]);
+  const markEmailAsRead = useMarkEmailAsRead();
+  const [hasMarkedAsRead, setHasMarkedAsRead] = useState([""]);
 
-  //   if (!session || !session.accessToken) {
-  //     redirect("/login");
-  //   }
-  if (mail?.read === false) {
-    // await markEmailAsRead(mail.id, session.accessToken);
-  }
+  useEffect(() => {
+    const markAsRead = async () => {
+      console.log("useEffect Marking as read", markEmailAsRead);
+      if (
+        session &&
+        status === "authenticated" &&
+        session.accessToken &&
+        mail?.labels?.includes("UNREAD") &&
+        markEmailAsRead &&
+        hasMarkedAsRead.includes(mail.id) === false
+      ) {
+        console.log("Marking as read", mail.id);
+        await markEmailAsRead.mutate({
+          messageId: mail.id,
+          session,
+          selectedCategory,
+        });
+        setHasMarkedAsRead((prev) => [...prev, mail.id]);
+      }
+    };
+
+    markAsRead();
+  }, [
+    session,
+    status,
+    mail,
+    markEmailAsRead,
+    hasMarkedAsRead,
+    selectedCategory,
+  ]);
 
   return (
     <div className="flex h-full flex-col">

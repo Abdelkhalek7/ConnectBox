@@ -26,6 +26,7 @@ import {
 
 interface NavProps {
   isCollapsed: boolean;
+  setCategory: (category: string) => void;
   links: {
     label: string;
     name: string;
@@ -52,7 +53,7 @@ const labels = [
   { name: "CATEGORY_FORUMS", icon: MessageSquare },
 ];
 
-export function Nav({ links, isCollapsed }: NavProps) {
+export function Nav({ links, isCollapsed, setCategory }: NavProps) {
   const [updatedLinks, setUpdatedLinks] = useState(links);
 
   useEffect(() => {
@@ -78,12 +79,13 @@ export function Nav({ links, isCollapsed }: NavProps) {
             <Tooltip key={index} delayDuration={0}>
               <TooltipTrigger asChild>
                 <Link
+                  onClick={() => setCategory(link.name)}
                   href="#"
                   className={cn(
                     buttonVariants({ variant: link.variant, size: "icon" }),
                     "h-9 w-9",
                     link.variant === "default" &&
-                      "dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-white"
+                      "dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-white",
                   )}
                 >
                   {link.icon && <link.icon className="mr-2 h-4 w-4" />}
@@ -101,20 +103,21 @@ export function Nav({ links, isCollapsed }: NavProps) {
             </Tooltip>
           ) : (
             <Link
+              onClick={() => setCategory(link.name)}
               key={index}
               href="#"
               className={cn(
                 buttonVariants({ variant: link.variant, size: "sm" }),
                 link.variant === "default" &&
                   "dark:bg-muted dark:text-white dark:hover:bg-muted dark:hover:text-white",
-                "justify-start"
+                "justify-start",
               )}
             >
               {link.icon && <link.icon className="mr-2 h-4 w-4" />}
               {link.label}
               {link.count > 0 && <span className="ml-auto">{link.count}</span>}
             </Link>
-          )
+          ),
         )}
       </nav>
     </div>

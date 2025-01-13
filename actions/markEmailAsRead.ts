@@ -1,18 +1,27 @@
+import { google } from "googleapis";
+
 export default async function markEmailAsRead(
   messageId: string,
-  accessToken: string
+  accessToken: string,
 ) {
   try {
-    const response = await fetch("/api/email/markEmailAsRead", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ messageId, accessToken }),
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({
+      access_token: accessToken,
     });
-    console.log("🚀 ~ response:", response);
-    console.log(`Email ${messageId} marked as read.`);
+
+    // Initialize the Gmail API
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+    await gmail.users.messages.modify({
+      userId: "me",
+      id: messageId,
+      requestBody: {
+        removeLabelIds: ["UNREAD"],
+      },
+    });
+    return { success: true };
   } catch (error) {
-    console.error("Failed to mark email as read:", error);
+    console.log("🚀 ~ POST ~ error:", error);
+    throw new Error("Failed to update the email");
   }
 }
