@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { type LucideIcon } from "lucide-react";
 import {
   Inbox,
   AlertOctagon,
@@ -15,6 +14,8 @@ import {
   Tag,
   Bell,
   MessageSquare,
+  SaveAll,
+  LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -26,7 +27,8 @@ import {
 
 interface NavProps {
   isCollapsed: boolean;
-  setCategory: (category: string) => void;
+  variant: Record<string, "default" | "ghost">;
+  handleCategorySelect: (category: string) => void;
   links: {
     label: string;
     name: string;
@@ -46,6 +48,7 @@ const labels = [
   { name: "IMPORTANT", icon: AlertCircle },
   { name: "SENT", icon: Send },
   { name: "DRAFT", icon: File },
+  { name: "ALL", icon: SaveAll },
   { name: "CATEGORY_PERSONAL", icon: User },
   { name: "CATEGORY_SOCIAL", icon: Users },
   { name: "CATEGORY_PROMOTIONS", icon: Tag },
@@ -53,11 +56,18 @@ const labels = [
   { name: "CATEGORY_FORUMS", icon: MessageSquare },
 ];
 
-export function Nav({ links, isCollapsed, setCategory }: NavProps) {
+export function Nav({
+  links,
+  isCollapsed,
+  variant,
+  handleCategorySelect,
+}: NavProps) {
   const [updatedLinks, setUpdatedLinks] = useState(links);
 
   useEffect(() => {
     // Map through links and assign icons where available
+
+    // handleVariant("INBOX", "default");
     const newLinks = links.map((link) => {
       const foundLabel = labels.find((item) => item.name === link.name);
       return {
@@ -68,6 +78,9 @@ export function Nav({ links, isCollapsed, setCategory }: NavProps) {
     setUpdatedLinks(newLinks);
   }, [links]);
 
+  const handleClick = (name: string) => {
+    handleCategorySelect(name);
+  };
   return (
     <div
       data-collapsed={isCollapsed}
@@ -79,12 +92,18 @@ export function Nav({ links, isCollapsed, setCategory }: NavProps) {
             <Tooltip key={index} delayDuration={0}>
               <TooltipTrigger asChild>
                 <Link
-                  onClick={() => setCategory(link.name)}
+                  onClick={() => {
+                    handleClick(link.name);
+                  }}
                   href="#"
                   className={cn(
-                    buttonVariants({ variant: link.variant, size: "icon" }),
+                    buttonVariants({
+                      variant:
+                        (variant[link.name] as "default" | "ghost") || "ghost",
+                      size: "icon",
+                    }),
                     "h-9 w-9",
-                    link.variant === "default" &&
+                    variant[link.name] === "default" &&
                       "dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-white",
                   )}
                 >
@@ -103,12 +122,16 @@ export function Nav({ links, isCollapsed, setCategory }: NavProps) {
             </Tooltip>
           ) : (
             <Link
-              onClick={() => setCategory(link.name)}
+              onClick={() => handleClick(link.name)}
               key={index}
               href="#"
               className={cn(
-                buttonVariants({ variant: link.variant, size: "sm" }),
-                link.variant === "default" &&
+                buttonVariants({
+                  variant:
+                    (variant[link.name] as "default" | "ghost") || "ghost",
+                  size: "sm",
+                }),
+                variant[link.name] === "default" &&
                   "dark:bg-muted dark:text-white dark:hover:bg-muted dark:hover:text-white",
                 "justify-start",
               )}

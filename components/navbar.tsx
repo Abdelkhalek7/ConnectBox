@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useRouter } from "next/router"; // <-- Import useRouter
 
 export function Navbar() {
   const pathname = usePathname();
@@ -33,7 +32,7 @@ export function Navbar() {
               href="/"
               className={cn(
                 "transition-colors hover:text-foreground/80",
-                pathname === "/" ? "text-foreground" : "text-foreground/60"
+                pathname === "/" ? "text-foreground" : "text-foreground/60",
               )}
             >
               Inbox
@@ -42,7 +41,7 @@ export function Navbar() {
               href="/sent"
               className={cn(
                 "transition-colors hover:text-foreground/80",
-                pathname === "/sent" ? "text-foreground" : "text-foreground/60"
+                pathname === "/sent" ? "text-foreground" : "text-foreground/60",
               )}
             >
               Sent
@@ -53,7 +52,7 @@ export function Navbar() {
                 "transition-colors hover:text-foreground/80",
                 pathname === "/drafts"
                   ? "text-foreground"
-                  : "text-foreground/60"
+                  : "text-foreground/60",
               )}
             >
               Drafts
@@ -112,7 +111,7 @@ export function Navbar() {
                 href="/login"
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "sm" }),
-                  "px-4"
+                  "px-4",
                 )}
               >
                 Login

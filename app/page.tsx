@@ -29,23 +29,9 @@ export default async function MailPage() {
       queryFn: () => getEmailsAPI(session.accessToken as string, "INBOX"),
     }),
   ]);
-  // Your existing code starts here
-  // const labelsCounts = queryClient.getQueryData(["labelsCounts"]);
-  // const emails = (queryClient.getQueryData(["emails"]) as MailType[]) || [];
-  const layout = [265, 440, 655]; // Default layout, since we can't use cookies on the server
-  const defaultCollapsed = false; // Default value, since we can't use cookies on the server
-  const dehydratedState = dehydrate(queryClient); // Convert QueryClient data to a serializable state
-
-  // const emailsFormatted: MailType[] = emails.map((email) => ({
-  //   id: email.id,
-  //   name: parseSender(email.from!).name,
-  //   email: parseSender(email.from!).email,
-  //   subject: email.subject!,
-  //   date: email.date!,
-  //   text: email.decodedBody!,
-  //   labels: email.labelIds!,
-  //   read: !email.labelIds!.includes("UNREAD"),
-  //   snippet: email.snippet!,
+  const layout = [265, 440, 655];
+  const defaultCollapsed = false;
+  const dehydratedState = dehydrate(queryClient);
   return (
     <div className="!overflow-hidden   max-h-screen h-[91.5vh] ">
       <HydrationBoundary state={dehydratedState}>

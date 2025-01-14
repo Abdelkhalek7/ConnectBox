@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
-
 import { Moon, Search, Sun } from "lucide-react";
-
 import { AccountSwitcher } from "@/components/account-switcher";
 import { MailDisplay } from "@/components/mail-display";
 import { MailList } from "@/components/mail-list";
 import { Nav } from "@/components/nav";
-
 import { useMail } from "@/hooks/use-mail";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -22,10 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-// import { Mail as MailType } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-// import { type LucideIcon } from "lucide-react";
-// import { mails } from "@/data/mail";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { getLabelsAPI } from "@/apis/getlabelsAPI";
@@ -37,23 +31,26 @@ interface MailProps {
     email: string;
     icon: React.ReactNode;
   }[];
-  // mails: MailType[];
   defaultLayout: number[] | undefined;
   defaultCollapsed?: boolean;
   navCollapsedSize: number;
-  // labelsCounts: {
-  //   group1: Label[];
-  //   group2: Label[];
-  // };
 }
-// type Label = {
-//   label: string;
-//   name: string;
-//   icon: LucideIcon | undefined;
-//   variant: "default" | "ghost";
-//   count: number;
-//   unreadcount: boolean;
-// };
+const variantdefault: Record<string, "default" | "ghost"> = {
+  INBOX: "ghost",
+  SPAM: "ghost",
+  TRASH: "ghost",
+  UNREAD: "ghost",
+  STARRED: "ghost",
+  IMPORTANT: "ghost",
+  SENT: "ghost",
+  DRAFT: "ghost",
+  ALL: "ghost",
+  CATEGORY_PERSONAL: "ghost",
+  CATEGORY_SOCIAL: "ghost",
+  CATEGORY_PROMOTIONS: "ghost",
+  CATEGORY_UPDATES: "ghost",
+  CATEGORY_FORUMS: "ghost",
+};
 
 export function Mail({
   accounts,
@@ -63,8 +60,16 @@ export function Mail({
 }: MailProps) {
   const { data: session } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const [variant, setVariant] = useState<Record<string, "default" | "ghost">>({
+    ...variantdefault,
+    INBOX: "default",
+  });
   const [selectedCategory, setSelectedCategory] = useState("INBOX");
 
+  const handleCategorySelect = (category: string) => {
+    setSelectedCategory(category);
+    setVariant({ ...variantdefault, [category]: "default" });
+  };
   const [mail] = useMail();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
@@ -73,7 +78,7 @@ export function Mail({
     queryKey: ["labelsCounts", session?.user.id],
     queryFn: () => getLabelsAPI(session!.accessToken!),
     enabled: !!session?.accessToken,
-    staleTime: 1000 * 60 * 15,
+    staleTime: 1000 * 60 * 150,
   });
 
   const { data: mails } = useQuery({
@@ -81,7 +86,7 @@ export function Mail({
     queryFn: () => getEmailsAPI(session!.accessToken!, selectedCategory),
 
     enabled: !!session?.accessToken,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 100,
   });
   console.log("mails", mails);
   console.log("labelsCounts", labelsCounts);
@@ -149,13 +154,15 @@ export function Mail({
           <Nav
             isCollapsed={isCollapsed}
             links={labelsCounts?.group1 || []}
-            setCategory={setSelectedCategory}
+            variant={variant}
+            handleCategorySelect={handleCategorySelect}
           />
           <Separator />
           <Nav
             isCollapsed={isCollapsed}
             links={labelsCounts?.group2 || []}
-            setCategory={setSelectedCategory}
+            variant={variant}
+            handleCategorySelect={handleCategorySelect}
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
