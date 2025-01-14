@@ -42,7 +42,7 @@ const emailListSchema = z.string().refine(
   },
   {
     message: "Invalid email address(es)",
-  }
+  },
 );
 
 const formSchema = z.object({
@@ -69,8 +69,8 @@ export function ComposeEmail() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       to: "",
-      cc: "",
-      bcc: "", // Ensure bcc is always a string
+      cc: undefined,
+      bcc: undefined, // Ensure bcc is always a string
       subject: "",
       content: "",
       attachments: [],
@@ -79,7 +79,7 @@ export function ComposeEmail() {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log("hi");
+    console.log("values ", values);
 
     setIsSubmitting(true);
     // Simulate API call
@@ -168,7 +168,11 @@ export function ComposeEmail() {
               <FormItem>
                 <FormLabel className="sr-only">CC</FormLabel>
                 <FormControl>
-                  <EmailInput placeholder="Cc" {...field} />
+                  <EmailInput
+                    placeholder="Cc"
+                    {...field}
+                    value={field.value || undefined}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -186,7 +190,7 @@ export function ComposeEmail() {
                   <EmailInput
                     placeholder="Bcc"
                     {...field}
-                    value={field.value || ""}
+                    value={field.value || undefined}
                   />
                 </FormControl>
                 <FormMessage />
