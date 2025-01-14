@@ -22,7 +22,7 @@ export function MailList({ items }: MailListProps) {
             key={item.id}
             className={cn(
               "flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent",
-              mail.selected === item.id && "bg-muted"
+              mail.selected === item.id && "bg-muted",
             )}
             onClick={() => setMail({ ...mail, selected: item.id })}
           >
@@ -39,7 +39,7 @@ export function MailList({ items }: MailListProps) {
                     "ml-auto text-xs",
                     mail.selected === item.id
                       ? "text-foreground"
-                      : "text-muted-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   {formatDistanceToNow(new Date(item.date), {
@@ -54,11 +54,17 @@ export function MailList({ items }: MailListProps) {
             </div>
             {item.labels.length ? (
               <div className="flex items-center gap-2">
-                {item.labels.map((label) => (
-                  <Badge key={label} variant={getBadgeVariantFromLabel(label)}>
-                    {label}
-                  </Badge>
-                ))}
+                {item.labels.map(
+                  (label) =>
+                    label != "UNREAD" && (
+                      <Badge
+                        key={label}
+                        variant={getBadgeVariantFromLabel(label)}
+                      >
+                        {label}
+                      </Badge>
+                    ),
+                )}
               </div>
             ) : null}
           </button>
@@ -69,7 +75,7 @@ export function MailList({ items }: MailListProps) {
 }
 
 function getBadgeVariantFromLabel(
-  label: string
+  label: string,
 ): ComponentProps<typeof Badge>["variant"] {
   if (["work"].includes(label.toLowerCase())) {
     return "default";
