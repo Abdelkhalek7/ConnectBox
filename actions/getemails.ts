@@ -47,9 +47,11 @@ async function getMessages(
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
     // List the user's messages (inbox, max 50 results)
+    const labelIds = category && category !== "ALL" ? [category] : undefined;
+
     const listResponse = await gmail.users.messages.list({
       userId: "me",
-      labelIds: category ? [category] : undefined,
+      labelIds,
       maxResults: 10,
     });
 
@@ -136,7 +138,7 @@ async function getMessages(
 
       return detailedMessages;
     }
-    throw new Error("Failed to fetch messages");
+    return [];
 
     // messages.push(messageDto);
     // Path to the JSON file

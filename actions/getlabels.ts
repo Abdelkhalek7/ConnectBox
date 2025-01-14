@@ -65,6 +65,14 @@ const labelsGroup1 = [
     count: 0,
     unreadcount: false,
   },
+  {
+    label: "ALL",
+    name: "ALL",
+    icon: undefined,
+    variant: "ghost",
+    count: 0,
+    unreadcount: false,
+  },
 ];
 const labelsGroup2 = [
   {
@@ -127,9 +135,12 @@ export async function getEmailCountByCategory(access_token: string) {
 
       do {
         // Fetch messages for the label with pagination
+        const labelIds =
+          label.name && label.name !== "ALL" ? [label.name] : undefined;
+        //
         const messagesResponse: any = await gmail.users.messages.list({
           userId: "me",
-          labelIds: [label.name],
+          labelIds: labelIds,
           maxResults: 500,
           q: label.unreadcount ? "is:unread" : "",
           pageToken: nextPageToken, // Use the token from the previous response
