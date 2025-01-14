@@ -10,7 +10,6 @@ import { signIn, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Icons } from "@/components/Icons";
 import {
   Form,
@@ -31,6 +30,7 @@ const formSchema = z.object({
   }),
 });
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface LoginFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function LoginForm({ className, ...props }: LoginFormProps) {
