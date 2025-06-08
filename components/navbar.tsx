@@ -1,8 +1,13 @@
 "use client";
-
+import { Mail, Plus } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Mail } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -20,53 +25,47 @@ export function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ">
       <div className="container flex h-[7.5vh] items-center">
         <div className="mr-4 hidden md:flex">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
+          <Link href="/" className=" flex items-center space-x-2">
             <Mail className="h-6 w-6" />
-            <span className="hidden font-bold sm:inline-block">Mail App</span>
+            <span className="hidden font-bold sm:inline-block">
+              Connect Box
+            </span>
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            <Link
-              href="/"
-              className={cn(
-                "transition-colors hover:text-foreground/80",
-                pathname === "/" ? "text-foreground" : "text-foreground/60",
-              )}
-            >
-              Inbox
-            </Link>
-            <Link
-              href="/sent"
-              className={cn(
-                "transition-colors hover:text-foreground/80",
-                pathname === "/sent" ? "text-foreground" : "text-foreground/60",
-              )}
-            >
-              Sent
-            </Link>
-            <Link
-              href="/drafts"
-              className={cn(
-                "transition-colors hover:text-foreground/80",
-                pathname === "/drafts"
-                  ? "text-foreground"
-                  : "text-foreground/60",
-              )}
-            >
-              Drafts
-            </Link>
-          </nav>
         </div>
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <div className="w-full flex-1 md:w-auto md:flex-none">
-            <Button variant="ghost" className="w-9 px-0">
-              <Mail className="h-4 w-4" />
-              <span className="sr-only">Compose</span>
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="group relative w-10 h-10 px-0 hover:bg-primary/10 hover:scale-105 transition-all duration-200"
+                    asChild
+                  >
+                    <Link href="/compose">
+                      <div className="relative">
+                        <Mail className=" h-6 w-6 scale-150 group-hover:scale-175 transition-transform duration-200" />
+                        <Plus className="absolute -top-2 -right-2 h-6 w-6  scale-125 text-primary group-hover:rotate-90 transition-transform duration-200" />
+                      </div>
+                      <span className="sr-only ">Compose new message</span>
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="bg-popover border shadow-md"
+                >
+                  <p className="text-sm font-medium  text-white">
+                    Compose new message
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-          <nav className="flex items-center">
+          <nav className="flex items-center  pr-5 space-x-2">
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -111,7 +110,7 @@ export function Navbar() {
                 href="/login"
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "sm" }),
-                  "px-4",
+                  "px-4"
                 )}
               >
                 Login
