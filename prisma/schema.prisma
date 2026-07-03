@@ -47,6 +47,27 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  Account       Account[]
-  Session       Session[]
+  password      String?
+  bio           String?
+  language      String?   @default("en")
+  theme         String?   @default("light")
+  notifications    Boolean?  @default(true)
+  emailDensity     String?   @default("comfortable")
+  conversationView Boolean?  @default(true)
+  textDirection    String?   @default("ltr")
+  Account          Account[]
+  Session          Session[]
+}
+
+model ScheduledEmail {
+  id          String   @id @default(cuid()) @map("_id")
+  userId      String
+  to          String[]
+  cc          String[]
+  bcc         String[]
+  subject     String
+  htmlContent String
+  scheduledAt DateTime
+  sent        Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }
