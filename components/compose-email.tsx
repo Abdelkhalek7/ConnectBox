@@ -57,6 +57,14 @@ const formSchema = z.object({
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+
 export function ComposeEmail() {
   const { data: session, status } = useSession();
 
@@ -82,34 +90,64 @@ export function ComposeEmail() {
     console.log("values ", values);
 
     setIsSubmitting(true);
-    // Simulate API call
-    // await new Promise((resolve) => setTimeout(resolve, 2000));
-    const response = await fetch("/api/email/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: session?.user?.name,
-        email: session?.user?.email,
-        to: values.to.split(","),
-        cc: (values.cc || "").split(","),
-        bcc: (values.bcc || "").split(","),
-        subject: values.subject,
-        htmlContent: values.content,
-        accessToken: session?.accessToken, // Replace with a valid token
-      }),
-    });
 
-    const data = await response.json();
-    console.log(data);
-    setIsSubmitting(false);
-    toast({
-      title: "Email sent",
-      description: "Your email has been sent successfully.",
-    });
-    form.reset();
-    setAttachments([]);
+    const base64Attachments = await Promise.all(
+      attachments.map(async (file) => {
+        const base64Str = await toBase64(file);
+        return {
+          name: file.name,
+          type: file.type,
+          content: base64Str.split(",")[1],
+        };
+      })
+    );
+
+    try {
+      const response = await fetch("/api/email/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: session?.user?.name,
+          email: session?.user?.email,
+          to: values.to.split(",").map(e => e.trim()),
+          cc: values.cc ? values.cc.split(",").map(e => e.trim()) : [],
+          bcc: values.bcc ? values.bcc.split(",").map(e => e.trim()) : [],
+          subject: values.subject,
+          htmlContent: values.content,
+          accessToken: session?.accessToken,
+          attachments: base64Attachments,
+          scheduledAt: values.scheduledAt ? values.scheduledAt.toISOString() : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send email");
+      }
+
+      const data = await response.json();
+      console.log(data);
+      toast({
+        title: values.scheduledAt ? "Email scheduled" : "Email sent",
+        description: values.scheduledAt
+          ? "Your email has been scheduled successfully."
+          : "Your email has been sent successfully.",
+      });
+      form.reset();
+      setAttachments([]);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: values.scheduledAt
+          ? "Failed to schedule the email. Please try again."
+          : "Failed to send the email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
