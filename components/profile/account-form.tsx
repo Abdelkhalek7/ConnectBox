@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Switch } from "@/components/ui/switch";
 
 const accountFormSchema = z.object({
   name: z
@@ -27,42 +27,74 @@ const accountFormSchema = z.object({
     .max(30, {
       message: "Name must not be longer than 30 characters.",
     }),
-  email: z
-    .string({
-      required_error: "Please select an email to display.",
-    })
-    .email(),
   language: z.string({
     required_error: "Please select a language.",
   }),
-  twoFactor: z.boolean().default(false).optional(),
 });
 
 type AccountFormValues = z.infer<typeof accountFormSchema>;
 
-// This can come from your database or API.
-const defaultValues: Partial<AccountFormValues> = {
-  name: "John Doe",
-  email: "john@example.com",
-  language: "en",
-  twoFactor: false,
-};
-
 export function AccountForm() {
+  const [isLoading, setIsLoading] = useState(true);
+
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
-    defaultValues,
+    defaultValues: {
+      name: "",
+      language: "en",
+    },
   });
 
-  function onSubmit(data: AccountFormValues) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
+  useEffect(() => {
+    async function loadAccount() {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          form.reset({
+            name: data.name || "",
+            language: data.language || "en",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load account settings:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadAccount();
+  }, [form]);
+
+  async function onSubmit(data: AccountFormValues) {
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          language: data.language,
+        }),
+      });
+      if (res.ok) {
+        toast({
+          title: "Account settings updated",
+          description: "Your account preferences have been saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to update account");
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Could not save account details.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground">Loading account...</div>;
   }
 
   return (
@@ -87,57 +119,26 @@ export function AccountForm() {
         />
         <FormField
           control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="Your email" {...field} />
-              </FormControl>
-              <FormDescription>
-                This is the email that will be used for account-related
-                notifications.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
           name="language"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Language</FormLabel>
               <FormControl>
-                <Input placeholder="Your preferred language" {...field} />
+                <select
+                  {...field}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="en">English</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                  <option value="es">Spanish</option>
+                  <option value="ar">Arabic</option>
+                </select>
               </FormControl>
               <FormDescription>
-                This is the language that will be used in the user interface.
+                Select your preferred interface language.
               </FormDescription>
               <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="twoFactor"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <FormLabel className="text-base">
-                  Two-factor Authentication
-                </FormLabel>
-                <FormDescription>
-                  Enable two-factor authentication for enhanced account
-                  security.
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
             </FormItem>
           )}
         />

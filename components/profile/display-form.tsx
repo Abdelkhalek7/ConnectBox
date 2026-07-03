@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,27 +31,70 @@ const displayFormSchema = z.object({
 
 type DisplayFormValues = z.infer<typeof displayFormSchema>;
 
-const defaultValues: Partial<DisplayFormValues> = {
-  emailDensity: "comfortable",
-  conversationView: true,
-  textDirection: "ltr",
-};
-
 export function DisplayForm() {
+  const [isLoading, setIsLoading] = useState(true);
+
   const form = useForm<DisplayFormValues>({
     resolver: zodResolver(displayFormSchema),
-    defaultValues,
+    defaultValues: {
+      emailDensity: "comfortable",
+      conversationView: true,
+      textDirection: "ltr",
+    },
   });
 
-  function onSubmit(data: DisplayFormValues) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
+  useEffect(() => {
+    async function loadDisplay() {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          form.reset({
+            emailDensity: data.emailDensity || "comfortable",
+            conversationView: data.conversationView !== null ? data.conversationView : true,
+            textDirection: data.textDirection || "ltr",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load display settings:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadDisplay();
+  }, [form]);
+
+  async function onSubmit(data: DisplayFormValues) {
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emailDensity: data.emailDensity,
+          conversationView: data.conversationView,
+          textDirection: data.textDirection,
+        }),
+      });
+      if (res.ok) {
+        toast({
+          title: "Display settings updated",
+          description: "Your display preferences have been saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to update display settings");
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Could not save display settings.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground">Loading display settings...</div>;
   }
 
   return (
@@ -69,10 +113,11 @@ export function DisplayForm() {
               <RadioGroup
                 onValueChange={field.onChange}
                 defaultValue={field.value}
+                value={field.value}
                 className="grid max-w-md grid-cols-2 gap-8 pt-2"
               >
                 <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary cursor-pointer">
                     <FormControl>
                       <RadioGroupItem value="comfortable" className="sr-only" />
                     </FormControl>
@@ -90,7 +135,7 @@ export function DisplayForm() {
                   </FormLabel>
                 </FormItem>
                 <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary cursor-pointer">
                     <FormControl>
                       <RadioGroupItem value="compact" className="sr-only" />
                     </FormControl>
@@ -99,6 +144,7 @@ export function DisplayForm() {
                         <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
                           <div className="h-4 w-[80%] rounded-lg bg-[#ecedef]" />
                           <div className="h-3 w-[90%] rounded-lg bg-[#ecedef]" />
+                          <div className="h-3 w-[95%] rounded-lg bg-[#ecedef]" />
                         </div>
                       </div>
                     </div>
@@ -119,7 +165,7 @@ export function DisplayForm() {
               <div className="space-y-0.5">
                 <FormLabel className="text-base">Conversation View</FormLabel>
                 <FormDescription>
-                  Group emails into conversations.
+                  Group emails in the same thread together.
                 </FormDescription>
               </div>
               <FormControl>
@@ -138,48 +184,33 @@ export function DisplayForm() {
             <FormItem className="space-y-1">
               <FormLabel>Text Direction</FormLabel>
               <FormDescription>
-                Choose the text direction for the application.
+                Select your preferred reading text direction.
               </FormDescription>
               <FormMessage />
               <RadioGroup
                 onValueChange={field.onChange}
                 defaultValue={field.value}
+                value={field.value}
                 className="grid max-w-md grid-cols-2 gap-8 pt-2"
               >
                 <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary cursor-pointer">
                     <FormControl>
                       <RadioGroupItem value="ltr" className="sr-only" />
                     </FormControl>
-                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
-                      <div className="space-y-2 rounded-sm bg-[#ecedef] p-2">
-                        <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-4 w-[80%] rounded-lg bg-[#ecedef]" />
-                          <div className="h-3 w-[70%] rounded-lg bg-[#ecedef]" />
-                        </div>
-                      </div>
+                    <div className="items-center rounded-md border-2 border-muted p-3 hover:border-accent text-center text-sm font-semibold">
+                      Left to Right (LTR)
                     </div>
-                    <span className="block w-full p-2 text-center font-normal">
-                      Left to Right
-                    </span>
                   </FormLabel>
                 </FormItem>
                 <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary cursor-pointer">
                     <FormControl>
                       <RadioGroupItem value="rtl" className="sr-only" />
                     </FormControl>
-                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
-                      <div className="space-y-2 rounded-sm bg-[#ecedef] p-2">
-                        <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-4 w-[80%] rounded-lg bg-[#ecedef] ml-auto" />
-                          <div className="h-3 w-[70%] rounded-lg bg-[#ecedef] ml-auto" />
-                        </div>
-                      </div>
+                    <div className="items-center rounded-md border-2 border-muted p-3 hover:border-accent text-center text-sm font-semibold">
+                      Right to Left (RTL)
                     </div>
-                    <span className="block w-full p-2 text-center font-normal">
-                      Right to Left
-                    </span>
                   </FormLabel>
                 </FormItem>
               </RadioGroup>

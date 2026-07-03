@@ -3,6 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,33 +23,70 @@ const appearanceFormSchema = z.object({
   theme: z.enum(["light", "dark", "system"], {
     required_error: "Please select a theme.",
   }),
-  color: z.enum(["default", "red", "green", "blue"], {
-    required_error: "Please select a color scheme.",
-  }),
 });
 
 type AppearanceFormValues = z.infer<typeof appearanceFormSchema>;
 
-const defaultValues: Partial<AppearanceFormValues> = {
-  theme: "system",
-  color: "default",
-};
-
 export function AppearanceForm() {
+  const [isLoading, setIsLoading] = useState(true);
+  const { setTheme } = useTheme();
+
   const form = useForm<AppearanceFormValues>({
     resolver: zodResolver(appearanceFormSchema),
-    defaultValues,
+    defaultValues: {
+      theme: "system",
+    },
   });
 
-  function onSubmit(data: AppearanceFormValues) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
+  useEffect(() => {
+    async function loadAppearance() {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          form.reset({
+            theme: data.theme || "system",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load appearance settings:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadAppearance();
+  }, [form]);
+
+  async function onSubmit(data: AppearanceFormValues) {
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          theme: data.theme,
+        }),
+      });
+      if (res.ok) {
+        setTheme(data.theme);
+        toast({
+          title: "Appearance settings updated",
+          description: "Your appearance theme has been saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to update appearance");
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Could not save appearance settings.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground">Loading appearance...</div>;
   }
 
   return (
@@ -66,10 +105,11 @@ export function AppearanceForm() {
               <RadioGroup
                 onValueChange={field.onChange}
                 defaultValue={field.value}
+                value={field.value}
                 className="grid max-w-md grid-cols-3 gap-8 pt-2"
               >
                 <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary cursor-pointer">
                     <FormControl>
                       <RadioGroupItem value="light" className="sr-only" />
                     </FormControl>
@@ -95,145 +135,30 @@ export function AppearanceForm() {
                   </FormLabel>
                 </FormItem>
                 <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary cursor-pointer">
                     <FormControl>
                       <RadioGroupItem value="dark" className="sr-only" />
                     </FormControl>
-                    <div className="items-center rounded-md border-2 border-muted bg-popover p-1 hover:bg-accent hover:text-accent-foreground">
-                      <div className="space-y-2 rounded-sm bg-slate-950 p-2">
-                        <div className="space-y-2 rounded-md bg-slate-800 p-2 shadow-sm">
-                          <div className="h-2 w-[80px] rounded-lg bg-slate-400" />
-                          <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
-                        </div>
-                        <div className="flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-sm">
-                          <div className="h-4 w-4 rounded-full bg-slate-400" />
-                          <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
-                        </div>
-                        <div className="flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-sm">
-                          <div className="h-4 w-4 rounded-full bg-slate-400" />
-                          <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
+                    <div className="items-center rounded-md border-2 border-primary p-1-unused">
+                      <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
+                        <div className="space-y-2 rounded-sm bg-zinc-950 p-2">
+                          <div className="space-y-2 rounded-md bg-zinc-900 p-2 shadow-sm">
+                            <div className="h-2 w-[80px] rounded-lg bg-zinc-400" />
+                            <div className="h-2 w-[100px] rounded-lg bg-zinc-400" />
+                          </div>
+                          <div className="flex items-center space-x-2 rounded-md bg-zinc-900 p-2 shadow-sm">
+                            <div className="h-4 w-4 rounded-full bg-zinc-400" />
+                            <div className="h-2 w-[100px] rounded-lg bg-zinc-400" />
+                          </div>
+                          <div className="flex items-center space-x-2 rounded-md bg-zinc-900 p-2 shadow-sm">
+                            <div className="h-4 w-4 rounded-full bg-zinc-400" />
+                            <div className="h-2 w-[100px] rounded-lg bg-zinc-400" />
+                          </div>
                         </div>
                       </div>
                     </div>
                     <span className="block w-full p-2 text-center font-normal">
                       Dark
-                    </span>
-                  </FormLabel>
-                </FormItem>
-                <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
-                    <FormControl>
-                      <RadioGroupItem value="system" className="sr-only" />
-                    </FormControl>
-                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
-                      <div className="space-y-2 rounded-sm bg-[#ecedef] p-2">
-                        <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-2 w-[80px] rounded-lg bg-[#ecedef]" />
-                          <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
-                        </div>
-                        <div className="flex items-center space-x-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-4 w-4 rounded-full bg-[#ecedef]" />
-                          <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
-                        </div>
-                        <div className="flex items-center space-x-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-4 w-4 rounded-full bg-[#ecedef]" />
-                          <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
-                        </div>
-                      </div>
-                    </div>
-                    <span className="block w-full p-2 text-center font-normal">
-                      System
-                    </span>
-                  </FormLabel>
-                </FormItem>
-              </RadioGroup>
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="color"
-          render={({ field }) => (
-            <FormItem className="space-y-1">
-              <FormLabel>Color Scheme</FormLabel>
-              <FormDescription>
-                Select a color scheme for your mail application.
-              </FormDescription>
-              <FormMessage />
-              <RadioGroup
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                className="grid max-w-md grid-cols-2 gap-8 pt-2"
-              >
-                <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
-                    <FormControl>
-                      <RadioGroupItem value="default" className="sr-only" />
-                    </FormControl>
-                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
-                      <div className="space-y-2 rounded-sm bg-[#ecedef] p-2">
-                        <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-2 w-[80px] rounded-lg bg-[#ecedef]" />
-                          <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
-                        </div>
-                      </div>
-                    </div>
-                    <span className="block w-full p-2 text-center font-normal">
-                      Default
-                    </span>
-                  </FormLabel>
-                </FormItem>
-                <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
-                    <FormControl>
-                      <RadioGroupItem value="red" className="sr-only" />
-                    </FormControl>
-                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
-                      <div className="space-y-2 rounded-sm bg-red-100 p-2">
-                        <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-2 w-[80px] rounded-lg bg-red-300" />
-                          <div className="h-2 w-[100px] rounded-lg bg-red-200" />
-                        </div>
-                      </div>
-                    </div>
-                    <span className="block w-full p-2 text-center font-normal">
-                      Red
-                    </span>
-                  </FormLabel>
-                </FormItem>
-                <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
-                    <FormControl>
-                      <RadioGroupItem value="green" className="sr-only" />
-                    </FormControl>
-                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
-                      <div className="space-y-2 rounded-sm bg-green-100 p-2">
-                        <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-2 w-[80px] rounded-lg bg-green-300" />
-                          <div className="h-2 w-[100px] rounded-lg bg-green-200" />
-                        </div>
-                      </div>
-                    </div>
-                    <span className="block w-full p-2 text-center font-normal">
-                      Green
-                    </span>
-                  </FormLabel>
-                </FormItem>
-                <FormItem>
-                  <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
-                    <FormControl>
-                      <RadioGroupItem value="blue" className="sr-only" />
-                    </FormControl>
-                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
-                      <div className="space-y-2 rounded-sm bg-blue-100 p-2">
-                        <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
-                          <div className="h-2 w-[80px] rounded-lg bg-blue-300" />
-                          <div className="h-2 w-[100px] rounded-lg bg-blue-200" />
-                        </div>
-                      </div>
-                    </div>
-                    <span className="block w-full p-2 text-center font-normal">
-                      Blue
                     </span>
                   </FormLabel>
                 </FormItem>

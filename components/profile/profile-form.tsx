@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,48 +29,73 @@ const profileFormSchema = z.object({
     .max(30, {
       message: "Username must not be longer than 30 characters.",
     }),
-  email: z
-    .string({
-      required_error: "Please select an email to display.",
-    })
-    .email(),
-  bio: z.string().max(160).min(4),
-  urls: z
-    .array(
-      z.object({
-        value: z.string().url({ message: "Please enter a valid URL." }),
-      })
-    )
-    .optional(),
+  bio: z.string().max(160).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-// This can come from your database or API.
-const defaultValues: Partial<ProfileFormValues> = {
-  bio: "I own a computer.",
-  urls: [
-    { value: "https://shadcn.com" },
-    { value: "http://twitter.com/shadcn" },
-  ],
-};
-
 export function ProfileForm() {
+  const [isLoading, setIsLoading] = useState(true);
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues,
+    defaultValues: {
+      username: "",
+      bio: "",
+    },
     mode: "onChange",
   });
 
-  function onSubmit(data: ProfileFormValues) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          form.reset({
+            username: data.name || "",
+            bio: data.bio || "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadProfile();
+  }, [form]);
+
+  async function onSubmit(data: ProfileFormValues) {
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.username,
+          bio: data.bio,
+        }),
+      });
+      if (res.ok) {
+        toast({
+          title: "Profile updated",
+          description: "Your profile details have been saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to save profile");
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Could not save profile details.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground">Loading profile...</div>;
   }
 
   return (
@@ -83,28 +108,11 @@ export function ProfileForm() {
             <FormItem>
               <FormLabel>Username</FormLabel>
               <FormControl>
-                <Input placeholder="shadcn" {...field} />
+                <Input placeholder="Username" {...field} />
               </FormControl>
               <FormDescription>
                 This is your public display name. It can be your real name or a
                 pseudonym.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="example@example.com" {...field} />
-              </FormControl>
-              <FormDescription>
-                You can manage verified email addresses in your{" "}
-                <Link href="/examples/forms">email settings</Link>.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -124,8 +132,7 @@ export function ProfileForm() {
                 />
               </FormControl>
               <FormDescription>
-                You can <span>@mention</span> other users and organizations to
-                link to them.
+                Brief description for your profile page.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -141,7 +148,7 @@ export function ProfileForm() {
               />
               <AvatarFallback>CN</AvatarFallback>
             </Avatar>
-            <Button>Change Picture</Button>
+            <Button type="button" onClick={() => toast({ title: "Note", description: "Profile picture changes are disabled in mock demo mode." })}>Change Picture</Button>
           </div>
         </div>
         <Button type="submit">Update profile</Button>
