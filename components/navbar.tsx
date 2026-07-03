@@ -61,10 +61,12 @@ export function Navbar() {
         </div>
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <div className="w-full flex-1 md:w-auto md:flex-none">
-            <Button variant="ghost" className="w-9 px-0">
-              <Mail className="h-4 w-4" />
-              <span className="sr-only">Compose</span>
-            </Button>
+            <Link href="/compose">
+              <Button variant="ghost" className="w-9 px-0">
+                <Mail className="h-4 w-4" />
+                <span className="sr-only">Compose</span>
+              </Button>
+            </Link>
           </div>
           <nav className="flex items-center">
             {session ? (
