@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { google } from "googleapis";
+import fs from "fs";
+import path from "path";
 
 const labelsGroup1 = [
   {
@@ -118,6 +120,51 @@ const labelsGroup2 = [
 ];
 
 export async function getEmailCountByCategory(access_token: string) {
+  if (access_token === "mock-access-token") {
+    try {
+      const filePath = path.join(process.cwd(), "data", "output.json");
+      if (fs.existsSync(filePath)) {
+        const fileContent = fs.readFileSync(filePath, "utf-8");
+        const rawMessages: any[] = JSON.parse(fileContent);
+
+        const group1 = labelsGroup1.map((label) => {
+          let count = 0;
+          if (label.name === "ALL") {
+            count = rawMessages.length;
+          } else if (label.name === "UNREAD") {
+            count = rawMessages.filter((msg) => msg.labelIds?.includes("UNREAD")).length;
+          } else if (label.unreadcount) {
+            count = rawMessages.filter(
+              (msg) => msg.labelIds?.includes(label.name) && msg.labelIds?.includes("UNREAD")
+            ).length;
+          } else {
+            count = rawMessages.filter((msg) => msg.labelIds?.includes(label.name)).length;
+          }
+          return { ...label, count };
+        });
+
+        const group2 = labelsGroup2.map((label) => {
+          const count = rawMessages.filter(
+            (msg) => msg.labelIds?.includes(label.name) && msg.labelIds?.includes("UNREAD")
+          ).length;
+          return { ...label, count };
+        });
+
+        return { group1, group2 };
+      }
+      return {
+        group1: labelsGroup1.map(l => ({ ...l })),
+        group2: labelsGroup2.map(l => ({ ...l })),
+      };
+    } catch (err) {
+      console.error("Error reading mock labels count:", err);
+      return {
+        group1: labelsGroup1.map(l => ({ ...l })),
+        group2: labelsGroup2.map(l => ({ ...l })),
+      };
+    }
+  }
+
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({
     access_token: access_token,
@@ -126,7 +173,9 @@ export async function getEmailCountByCategory(access_token: string) {
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
   try {
-    const allLabels = [...labelsGroup1, ...labelsGroup2];
+    const group1 = labelsGroup1.map(l => ({ ...l }));
+    const group2 = labelsGroup2.map(l => ({ ...l }));
+    const allLabels = [...group1, ...group2];
 
     // Create an array of promises for each label
     const promises = allLabels.map(async (label) => {
@@ -158,8 +207,8 @@ export async function getEmailCountByCategory(access_token: string) {
     await Promise.all(promises);
 
     return {
-      group1: labelsGroup1,
-      group2: labelsGroup2,
+      group1,
+      group2,
     };
   } catch (error) {
     console.error("Error fetching email counts by category:", error);

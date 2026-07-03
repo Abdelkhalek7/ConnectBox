@@ -1,3 +1,4 @@
+import "@/lib/patchBuffer";
 import markEmailAsRead from "@/actions/markEmailAsRead";
 
 export const POST = async (request: Request) => {

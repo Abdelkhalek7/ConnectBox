@@ -2,10 +2,17 @@ import { google } from "googleapis";
 import fs from "fs";
 import path from "path";
 
-export default async function markEmailAsRead(
-  messageId: string,
-  accessToken: string,
-) {
+export default async function modifyEmailLabels({
+  messageId,
+  accessToken,
+  addLabelIds = [],
+  removeLabelIds = [],
+}: {
+  messageId: string;
+  accessToken: string;
+  addLabelIds?: string[];
+  removeLabelIds?: string[];
+}) {
   if (accessToken === "mock-access-token") {
     try {
       const filePath = path.join(process.cwd(), "data", "output.json");
@@ -18,10 +25,10 @@ export default async function markEmailAsRead(
           const rawMessages: any[] = JSON.parse(fileContent);
           const updatedMessages = rawMessages.map((msg) => {
             if (msg.id === messageId) {
-              return {
-                ...msg,
-                labelIds: msg.labelIds?.filter((l: string) => l !== "UNREAD") || [],
-              };
+              let labels = msg.labelIds || [];
+              labels = [...labels, ...addLabelIds];
+              labels = labels.filter((l: string) => !removeLabelIds.includes(l));
+              return { ...msg, labelIds: Array.from(new Set(labels)) };
             }
             return msg;
           });
@@ -33,29 +40,30 @@ export default async function markEmailAsRead(
       updateFile(filePath2);
       return { success: true };
     } catch (err) {
-      console.error("Error updating mock read status:", err);
+      console.error("Error updating mock labels:", err);
       throw err;
     }
   }
 
-  try {
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({
-      access_token: accessToken,
-    });
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: accessToken,
+  });
 
-    // Initialize the Gmail API
-    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-    await gmail.users.messages.modify({
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+  try {
+    const result = await gmail.users.messages.modify({
       userId: "me",
       id: messageId,
       requestBody: {
-        removeLabelIds: ["UNREAD"],
+        addLabelIds,
+        removeLabelIds,
       },
     });
-    return { success: true };
+    return result.data;
   } catch (error) {
-    console.log("🚀 ~ POST ~ error:", error);
-    throw new Error("Failed to update the email");
+    console.error("Error modifying email labels:", error);
+    throw error;
   }
 }

@@ -1,3 +1,4 @@
+import "@/lib/patchBuffer";
 import { getEmailCountByCategory } from "@/actions/getlabels";
 
 export const POST = async (request: Request) => {

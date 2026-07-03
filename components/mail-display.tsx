@@ -1,4 +1,5 @@
 "use client";
+
 import { addDays, addHours, format, nextSaturday } from "date-fns";
 import {
   Archive,
@@ -21,25 +22,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-// import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-// import { Switch } from "@/components/ui/switch";
-// import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSession } from "next-auth/react";
-// import { authOptions } from "@/lib/auth";
-// import { redirect } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useMarkEmailAsRead } from "@/hooks/useMarkEmailAsRead";
+import { useModifyEmailLabels } from "@/hooks/useModifyEmailLabels";
+import { useToast } from "@/hooks/use-toast";
 
 interface MailDisplayProps {
   mail: Mail | null;
@@ -50,38 +51,194 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
   const today = new Date();
   const { data: session, status } = useSession();
   const markEmailAsRead = useMarkEmailAsRead();
-  const [hasMarkedAsRead, setHasMarkedAsRead] = useState([""]);
+  const modifyLabels = useModifyEmailLabels();
+  const { toast } = useToast();
+  const hasMarkedAsRead = useRef<string[]>([]);
+  const [replyText, setReplyText] = useState("");
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [muteOnSend, setMuteOnSend] = useState(false);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const markAsRead = async () => {
-      console.log("useEffect Marking as read", markEmailAsRead);
       if (
         session &&
         status === "authenticated" &&
         session.accessToken &&
-        mail?.labels?.includes("UNREAD") &&
-        markEmailAsRead &&
-        hasMarkedAsRead.includes(mail.id) === false
+        mail &&
+        mail.labels?.includes("UNREAD") &&
+        !hasMarkedAsRead.current.includes(mail.id)
       ) {
         console.log("Marking as read", mail.id);
+        hasMarkedAsRead.current.push(mail.id);
         await markEmailAsRead.mutate({
           messageId: mail.id,
           session,
           selectedCategory,
         });
-        setHasMarkedAsRead((prev) => [...prev, mail.id]);
       }
     };
 
     markAsRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     session,
     status,
     mail,
-    markEmailAsRead,
-    hasMarkedAsRead,
     selectedCategory,
   ]);
+
+  const handleArchive = () => {
+    if (!mail || !session) return;
+    modifyLabels.mutate({
+      messageId: mail.id,
+      session,
+      selectedCategory,
+      removeLabelIds: ["INBOX"],
+    });
+    toast({
+      title: "Thread archived",
+      description: "Successfully archived the conversation.",
+    });
+  };
+
+  const handleJunk = () => {
+    if (!mail || !session) return;
+    modifyLabels.mutate({
+      messageId: mail.id,
+      session,
+      selectedCategory,
+      addLabelIds: ["SPAM"],
+      removeLabelIds: ["INBOX"],
+    });
+    toast({
+      title: "Moved to spam",
+      description: "Successfully marked the conversation as spam.",
+    });
+  };
+
+  const handleTrash = () => {
+    if (!mail || !session) return;
+    modifyLabels.mutate({
+      messageId: mail.id,
+      session,
+      selectedCategory,
+      addLabelIds: ["TRASH"],
+      removeLabelIds: ["INBOX"],
+    });
+    toast({
+      title: "Moved to trash",
+      description: "Successfully moved the conversation to trash.",
+    });
+  };
+
+  const handleStar = () => {
+    if (!mail || !session) return;
+    const isStarred = mail.labels?.includes("STARRED");
+    modifyLabels.mutate({
+      messageId: mail.id,
+      session,
+      selectedCategory,
+      addLabelIds: isStarred ? [] : ["STARRED"],
+      removeLabelIds: isStarred ? ["STARRED"] : [],
+    });
+    toast({
+      title: isStarred ? "Star removed" : "Starred conversation",
+      description: isStarred ? "Removed star from thread." : "Added star to thread.",
+    });
+  };
+
+  const handleUnread = () => {
+    if (!mail || !session) return;
+    modifyLabels.mutate({
+      messageId: mail.id,
+      session,
+      selectedCategory,
+      addLabelIds: ["UNREAD"],
+    });
+    toast({
+      title: "Marked as unread",
+      description: "Thread marked as unread.",
+    });
+  };
+
+  const handleMute = () => {
+    if (!mail || !session) return;
+    modifyLabels.mutate({
+      messageId: mail.id,
+      session,
+      selectedCategory,
+      addLabelIds: ["MUTE"],
+    });
+    toast({
+      title: "Muted conversation",
+      description: "You will no longer receive notifications for this thread.",
+    });
+  };
+
+  const handleSnooze = (timeDesc: string) => {
+    if (!mail || !session) return;
+    toast({
+      title: "Conversation snoozed",
+      description: `Snoozed until ${timeDesc}`,
+    });
+  };
+
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mail || !session || !replyText.trim()) return;
+
+    setIsSendingReply(true);
+    try {
+      const response = await fetch("/api/email/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: session.user?.name || "User",
+          email: session.user?.email || "user@connectbox.com",
+          to: [mail.email],
+          subject: mail.subject.toLowerCase().startsWith("re:")
+            ? mail.subject
+            : `Re: ${mail.subject}`,
+          htmlContent: `<p>${replyText.replace(/\n/g, "<br>")}</p>`,
+          accessToken: session.accessToken,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to send reply");
+
+      if (muteOnSend) {
+        handleMute();
+      }
+
+      toast({
+        title: "Reply sent",
+        description: "Your reply has been sent successfully.",
+      });
+      setReplyText("");
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to send reply. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
+  const focusReply = () => {
+    replyRef.current?.focus();
+  };
+
+  const prefillForward = () => {
+    const forwardedText = `\n\n---------- Forwarded message ---------\nFrom: ${mail?.name} <${mail?.email}>\nDate: ${mail?.date}\nSubject: ${mail?.subject}\n\n`;
+    setReplyText(forwardedText);
+    focusReply();
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -89,7 +246,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
         <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={!mail}>
+              <Button variant="ghost" size="icon" disabled={!mail} onClick={handleArchive}>
                 <Archive className="h-4 w-4" />
                 <span className="sr-only">Archive</span>
               </Button>
@@ -98,7 +255,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={!mail}>
+              <Button variant="ghost" size="icon" disabled={!mail} onClick={handleJunk}>
                 <ArchiveX className="h-4 w-4" />
                 <span className="sr-only">Move to junk</span>
               </Button>
@@ -107,7 +264,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={!mail}>
+              <Button variant="ghost" size="icon" disabled={!mail} onClick={handleTrash}>
                 <Trash2 className="h-4 w-4" />
                 <span className="sr-only">Move to trash</span>
               </Button>
@@ -132,6 +289,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
                     <Button
                       variant="ghost"
                       className="justify-start font-normal"
+                      onClick={() => handleSnooze("Later today")}
                     >
                       Later today{" "}
                       <span className="ml-auto text-muted-foreground">
@@ -141,6 +299,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
                     <Button
                       variant="ghost"
                       className="justify-start font-normal"
+                      onClick={() => handleSnooze("Tomorrow")}
                     >
                       Tomorrow
                       <span className="ml-auto text-muted-foreground">
@@ -150,6 +309,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
                     <Button
                       variant="ghost"
                       className="justify-start font-normal"
+                      onClick={() => handleSnooze("This weekend")}
                     >
                       This weekend
                       <span className="ml-auto text-muted-foreground">
@@ -159,6 +319,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
                     <Button
                       variant="ghost"
                       className="justify-start font-normal"
+                      onClick={() => handleSnooze("Next week")}
                     >
                       Next week
                       <span className="ml-auto text-muted-foreground">
@@ -178,7 +339,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
         <div className="ml-auto flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={!mail}>
+              <Button variant="ghost" size="icon" disabled={!mail} onClick={focusReply}>
                 <Reply className="h-4 w-4" />
                 <span className="sr-only">Reply</span>
               </Button>
@@ -187,7 +348,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={!mail}>
+              <Button variant="ghost" size="icon" disabled={!mail} onClick={focusReply}>
                 <ReplyAll className="h-4 w-4" />
                 <span className="sr-only">Reply all</span>
               </Button>
@@ -196,7 +357,7 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={!mail}>
+              <Button variant="ghost" size="icon" disabled={!mail} onClick={prefillForward}>
                 <Forward className="h-4 w-4" />
                 <span className="sr-only">Forward</span>
               </Button>
@@ -213,25 +374,26 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>Mark as unread</DropdownMenuItem>
-            <DropdownMenuItem>Star thread</DropdownMenuItem>
-            <DropdownMenuItem>Add label</DropdownMenuItem>
-            <DropdownMenuItem>Mute thread</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleUnread}>Mark as unread</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleStar}>
+              {mail?.labels?.includes("STARRED") ? "Remove star" : "Star thread"}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleMute}>Mute thread</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       <Separator />
       {mail ? (
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="flex items-start p-4">
             <div className="flex items-start gap-4 text-sm">
               <Avatar>
                 <AvatarImage alt={mail.name} />
                 <AvatarFallback>
                   {mail.name
-                    .split(" ")
+                    ?.split(" ")
                     .map((chunk) => chunk[0])
-                    .join("")}
+                    .join("") || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="grid gap-1">
@@ -249,47 +411,46 @@ export function MailDisplay({ mail, selectedCategory }: MailDisplayProps) {
             )}
           </div>
           <Separator />
-          {/* <div className="flex-1 overflow-auto whitespace-pre-wrap p-4 text-sm">
-            <div
-              dangerouslySetInnerHTML={{ __html: mail.text || "" }}
-              style={{
-                backgroundColor: "#f9f9f9",
-                padding: "10px",
-                borderRadius: "5px",
-                maxHeight: "400px", // Adjust as needed for your layout
-                overflowY: "auto",
-              }}
-            />
-          </div> */}
-          <iframe
-            srcDoc={mail.text || ""}
-            className="w-full h-full border border-gray-300 rounded-md"
-            sandbox="allow-same-origin"
-            style={{ backgroundColor: "white" }}
-          ></iframe>
-          {/* <Separator className="mt-auto" /> */}
-          {/* <div className="p-4">
-            <form>
+          <div className="flex-1 min-h-[300px]">
+            <iframe
+              srcDoc={mail.text || ""}
+              className="w-full h-full border-0"
+              sandbox="allow-same-origin"
+              style={{ backgroundColor: "white" }}
+            ></iframe>
+          </div>
+          <Separator className="mt-auto" />
+          <div className="p-4 bg-muted/40">
+            <form onSubmit={handleSendReply}>
               <div className="grid gap-4">
                 <Textarea
-                  className="p-4"
-                  placeholder={`Reply ${mail.name}...`}
+                  ref={replyRef}
+                  className="p-4 bg-background resize-none"
+                  placeholder={`Reply to ${mail.name}...`}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  rows={4}
                 />
                 <div className="flex items-center">
                   <Label
                     htmlFor="mute"
-                    className="flex items-center gap-2 text-xs font-normal"
+                    className="flex items-center gap-2 text-xs font-normal cursor-pointer select-none"
                   >
-                    <Switch id="mute" aria-label="Mute thread" /> Mute this
-                    thread
+                    <Switch
+                      id="mute"
+                      aria-label="Mute thread"
+                      checked={muteOnSend}
+                      onCheckedChange={setMuteOnSend}
+                    />{" "}
+                    Mute thread on send
                   </Label>
-                  <Button size="sm" className="ml-auto">
-                    Send
+                  <Button size="sm" className="ml-auto bg-blue-600 hover:bg-blue-700 text-white" disabled={isSendingReply || !replyText.trim()}>
+                    {isSendingReply ? "Sending..." : "Send"}
                   </Button>
                 </div>
               </div>
             </form>
-          </div> */}
+          </div>
         </div>
       ) : (
         <div className="p-8 text-center text-muted-foreground">

@@ -34,6 +34,7 @@ interface MailProps {
   defaultLayout: number[] | undefined;
   defaultCollapsed?: boolean;
   navCollapsedSize: number;
+  defaultCategory?: string;
 }
 const variantdefault: Record<string, "default" | "ghost"> = {
   INBOX: "ghost",
@@ -57,14 +58,16 @@ export function Mail({
   defaultLayout = [265, 440, 655],
   defaultCollapsed = false,
   navCollapsedSize,
+  defaultCategory = "INBOX",
 }: MailProps) {
   const { data: session } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [variant, setVariant] = useState<Record<string, "default" | "ghost">>({
     ...variantdefault,
-    INBOX: "default",
+    [defaultCategory]: "default",
   });
-  const [selectedCategory, setSelectedCategory] = useState("INBOX");
+  const [selectedCategory, setSelectedCategory] = useState(defaultCategory);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);
@@ -84,12 +87,26 @@ export function Mail({
   const { data: mails } = useQuery({
     queryKey: ["emails", session?.user.id, selectedCategory],
     queryFn: () => getEmailsAPI(session!.accessToken!, selectedCategory),
-
     enabled: !!session?.accessToken,
     staleTime: 1000 * 60 * 100,
   });
+
   console.log("mails", mails);
   console.log("labelsCounts", labelsCounts);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filteredMails = (mails || []).filter((item: any) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      item.subject?.toLowerCase().includes(query) ||
+      item.name?.toLowerCase().includes(query) ||
+      item.email?.toLowerCase().includes(query) ||
+      item.snippet?.toLowerCase().includes(query) ||
+      item.text?.toLowerCase().includes(query)
+    );
+  });
+
   return (
     <TooltipProvider delayDuration={0}>
       <ResizablePanelGroup
@@ -187,21 +204,26 @@ export function Mail({
             </div>
             <Separator />
             <div className="bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <form>
+              <form onSubmit={(e) => e.preventDefault()}>
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search" className="pl-8" />
+                  <Input
+                    placeholder="Search"
+                    className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </form>
             </div>
             <TabsContent value="all" className="m-0">
-              <MailList items={mails || []} />
+              <MailList items={filteredMails} />
             </TabsContent>
             <TabsContent value="unread" className="m-0">
               {/*eslint-disable-next-line @typescript-eslint/no-explicit-any*/}
               <MailList
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                items={(mails || []).filter((item: any) => !item.read)}
+                items={filteredMails.filter((item: any) => !item.read)}
               />
             </TabsContent>
           </Tabs>

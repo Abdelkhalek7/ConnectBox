@@ -1,3 +1,4 @@
+import "@/lib/patchBuffer";
 import getMessages from "@/actions/getemails";
 
 export const POST = async (request: Request) => {
