@@ -38,7 +38,7 @@ async function decodeBase64(base64String: string): Promise<string> {
 
 async function getMessages(
   access_token: string,
-  category: string,
+  category: string
 ): Promise<MessageDto[]> {
   if (access_token === "mock-access-token") {
     try {
@@ -165,7 +165,7 @@ async function getMessages(
           if (messageDto.payload?.headers) {
             const headers = messageDto.payload.headers;
             messageDto.subject = headers.find(
-              (h) => h.name === "Subject",
+              (h) => h.name === "Subject"
             )?.value;
             messageDto.from = headers.find((h) => h.name === "From")?.value;
             messageDto.date = headers.find((h) => h.name === "Date")?.value;
@@ -177,12 +177,10 @@ async function getMessages(
 
             if (mimeType === "text/html" && messageDto.payload.body.data) {
               const decodedBody = await decodeBase64(
-                messageDto.payload.body.data,
+                messageDto.payload.body.data
               );
               messageDto.decodedBody = decodedBody;
-            }
-
-            if (mimeType === "multipart/alternative") {
+            } else if (mimeType === "multipart/alternative") {
               for (const part of parts || []) {
                 if (part.body?.data) {
                   const decodedBody = await decodeBase64(part.body.data);
@@ -190,9 +188,7 @@ async function getMessages(
                   messageDto.decodedBody = decodedBody;
                 }
               }
-            }
-
-            if (
+            } else if (
               mimeType === "multipart/mixed" &&
               parts &&
               parts[0]?.mimeType === "multipart/alternative"
@@ -204,22 +200,28 @@ async function getMessages(
                   messageDto.decodedBody = decodedBody;
                 }
               }
-            }
-
-            if (
+            } else if (
               mimeType === "multipart/mixed" &&
               parts &&
               parts[0]?.mimeType === "text/html"
             ) {
               const decodedBody = await decodeBase64(
-                parts[0]?.body?.data || "",
+                parts[0]?.body?.data || ""
               );
               parts[0].body.data = decodedBody;
+              messageDto.decodedBody = decodedBody;
+            } else if (mimeType === "text/plain") {
+              // Decode the base64 encoded body
+              const decodedBody = await decodeBase64(
+                messageDto.payload.body.data || ""
+              );
+
+              // parts[0].body.data = decodedBody;
               messageDto.decodedBody = decodedBody;
             }
           }
           return messageDto;
-        }),
+        })
       );
 
       return detailedMessages;
